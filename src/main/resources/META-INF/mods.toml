@@ -1,0 +1,22 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="npcmind"
+version="1.0.0"
+displayName="NPC Mind"
+authors="Yaseen"
+description='''NPC Mind is a reusable Forge 1.20.1 library for NPC intelligence, persistent memory, safe tool execution, deterministic tasks, navigation, combat, crafting and world interaction. It never auto-spawns a player companion.'''
+
+[[dependencies.npcmind]]
+modId="forge"
+mandatory=true
+versionRange="[47.4.10,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.npcmind]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
