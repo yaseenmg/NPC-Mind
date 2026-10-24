@@ -1,0 +1,132 @@
+package com.yaseen.npcmind.crafting;
+
+import com.yaseen.npcmind.agent.InternalToolExecutor;
+import com.yaseen.npcmind.entity.CompanionEntity;
+import com.yaseen.npcmind.state.ActionPermissions;
+import com.yaseen.npcmind.tool.impl.CraftItemTool;
+import com.yaseen.npcmind.tool.impl.GatherBlockTool;
+import com.yaseen.npcmind.tool.impl.GatherWoodTool;
+import com.yaseen.npcmind.tool.impl.PlaceBlockTool;
+import com.yaseen.npcmind.tool.impl.SmeltItemTool;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import java.util.Locale;
+
+/** Deterministic real-world resource acquisition for recipe planning. */
+public final class ResourcePlanner {
+    public record Decision(boolean started, String result) {
+        public static Decision started(String result) { return new Decision(true, result); }
+        public static Decision blocked(String result) { return new Decision(false, result); }
+        public static Decision none() { return new Decision(false, ""); }
+    }
+    private ResourcePlanner() {}
+
+    public static Decision acquire(CompanionEntity c, ServerPlayer p, Ingredient ingredient) {
+        if (c == null || p == null || ingredient == null || ingredient.isEmpty()) return Decision.none();
+        ItemStack[] choices = ingredient.getItems();
+        if (choices.length == 0) return Decision.blocked("missing_ingredient=unknown");
+        for (ItemStack choice : choices) if (count(c.getCompanionInventory(), choice.getItem()) > 0) return Decision.none();
+        for (ItemStack choice : choices) { Decision d = acquireItem(c, p, choice.getItem()); if (d.started || !d.result.isBlank()) return d; }
+        return Decision.blocked("missing_real_resource=" + describe(choices));
+    }
+
+    private static Decision acquireItem(CompanionEntity c, ServerPlayer p, Item item) {
+        String id = id(item), path = id.substring(id.indexOf(':') + 1).toLowerCase(Locale.ROOT);
+        Container inv = c.getCompanionInventory();
+        if (isLog(path)) {
+            if (!c.getPermissions().allowed(ActionPermissions.Action.MINE)) return Decision.blocked("DENIED permission=mine");
+            String r = InternalToolExecutor.invoke(c, p, "gather_wood", "{\"count\":8}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, "logs");
+        }
+        if (path.equals("stick")) {
+            Item planks = byId("minecraft:oak_planks");
+            if (countAnyPlanks(inv) == 0) { Decision d = acquireItem(c, p, planks); if (d.started || !d.result.isBlank()) return d; }
+            String r = InternalToolExecutor.invoke(c, p, "craft_item", "{\"output\":\"minecraft:stick\",\"count\":4}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, "sticks");
+        }
+        if (path.endsWith("_planks")) {
+            if (countAnyLogs(inv) == 0) { String r = InternalToolExecutor.invoke(c, p, "gather_wood", "{\"count\":4}", "internal-" + java.util.UUID.randomUUID()).result(); return from(r, "logs_for_planks"); }
+            String r = InternalToolExecutor.invoke(c, p, "craft_item", "{\"output\":\"" + id + "\",\"count\":4}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, "planks");
+        }
+        if (path.equals("cobblestone") || path.equals("stone")) {
+            String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"stone\",\"count\":12}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, "stone");
+        }
+        if (isOreDrop(path)) {
+            String ore = oreForDrop(path);
+            if (ore != null) {
+                String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"" + ore + "\",\"count\":6}", "internal-" + java.util.UUID.randomUUID()).result();
+                if (r != null && r.startsWith("STARTED")) return Decision.started("STARTED acquire=" + path + " via=" + r);
+                if (hasRawFor(path, inv)) return ensureSmelt(c, p, path);
+                return from(r, path + "_ore");
+            }
+        }
+        if (path.equals("iron_ingot") || path.equals("gold_ingot") || path.equals("copper_ingot")) {
+            if (hasRawFor(path, inv)) return ensureSmelt(c, p, path);
+            String ore = oreForDrop(path);
+            String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"" + ore + "\",\"count\":6}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, path + "_ore");
+        }
+        if (path.equals("coal") || path.equals("redstone") || path.equals("lapis_lazuli") || path.equals("diamond") || path.equals("emerald")) {
+            String ore = path + "_ore";
+            String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"" + ore + "\",\"count\":4}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, path + "_ore");
+        }
+        if (path.contains("sand") || path.contains("gravel") || path.contains("clay") || path.contains("dirt")) {
+            String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"" + path + "\",\"count\":8}", "internal-" + java.util.UUID.randomUUID()).result();
+            return from(r, path);
+        }
+        return Decision.none();
+    }
+
+    private static Decision ensureSmelt(CompanionEntity c, ServerPlayer p, String outputPath) {
+        BlockPos furnace = findFurnace(c, 8);
+        if (furnace == null) {
+            String made = InternalToolExecutor.invoke(c, p, "craft_item", "{\"output\":\"minecraft:furnace\",\"count\":1}", "internal-" + java.util.UUID.randomUUID()).result();
+            if (made != null && made.startsWith("SUCCESS")) {
+                String placed = InternalToolExecutor.invoke(c, p, "place_block", "{\"block\":\"furnace\",\"count\":1}", "internal-" + java.util.UUID.randomUUID()).result();
+                if (placed != null && placed.startsWith("SUCCESS")) furnace = findFurnace(c, 8);
+                else return from(placed, "place_furnace");
+            } else if (made != null && made.startsWith("FAILED") && count(c.getCompanionInventory(), byId("minecraft:cobblestone")) == 0) {
+                String r = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"stone\",\"count\":12}", "internal-" + java.util.UUID.randomUUID()).result();
+                return from(r, "cobblestone_for_furnace");
+            } else return from(made, "furnace");
+        }
+        if (furnace == null) return Decision.blocked("missing_real_furnace");
+        if (!hasFuel(c.getCompanionInventory())) {
+            String coal = InternalToolExecutor.invoke(c, p, "gather_block", "{\"block\":\"coal_ore\",\"count\":4}", "internal-" + java.util.UUID.randomUUID()).result();
+            if (coal != null && coal.startsWith("STARTED")) return Decision.started("STARTED fuel_collection=" + coal);
+            String wood = InternalToolExecutor.invoke(c, p, "gather_wood", "{\"count\":3}", "internal-" + java.util.UUID.randomUUID()).result();
+            if (wood != null && wood.startsWith("STARTED")) return Decision.started("STARTED fuel_collection=" + wood);
+            return Decision.blocked("missing_furnace_fuel");
+        }
+        String r = InternalToolExecutor.invoke(c, p, "smelt_item", "{\"type\":\"smelting\",\"output\":\"minecraft:" + outputPath + "\",\"x\":" + furnace.getX() + ",\"y\":" + furnace.getY() + ",\"z\":" + furnace.getZ() + "}", "internal-" + java.util.UUID.randomUUID()).result();
+        return from(r, "smelt_" + outputPath);
+    }
+
+    private static Decision from(String result, String phase) {
+        if (result == null || result.isBlank()) return Decision.none();
+        if (result.startsWith("STARTED")) return Decision.started("STARTED phase=" + phase + " " + result);
+        if (result.startsWith("SUCCESS")) return Decision.none();
+        if (result.startsWith("FAILED") || result.startsWith("DENIED") || result.startsWith("ERROR")) return Decision.blocked(result);
+        return Decision.none();
+    }
+    private static boolean isOreDrop(String path) { return path.equals("iron_ingot") || path.equals("gold_ingot") || path.equals("copper_ingot") || path.equals("coal") || path.equals("redstone") || path.equals("lapis_lazuli") || path.equals("diamond") || path.equals("emerald"); }
+    private static String oreForDrop(String path) { return switch (path) {case "iron_ingot" -> "iron_ore";case "gold_ingot" -> "gold_ore";case "copper_ingot" -> "copper_ore";case "coal" -> "coal_ore";case "redstone" -> "redstone_ore";case "lapis_lazuli" -> "lapis_ore";case "diamond" -> "diamond_ore";case "emerald" -> "emerald_ore";default -> null;}; }
+    private static boolean hasRawFor(String ingotPath, Container inv) {String raw = switch (ingotPath) {case "iron_ingot" -> "minecraft:raw_iron";case "gold_ingot" -> "minecraft:raw_gold";case "copper_ingot" -> "minecraft:raw_copper";default -> "";};return !raw.isBlank() && count(inv, byId(raw)) > 0;}
+    private static boolean hasFuel(Container inv) {for (int i = 0; i < inv.getContainerSize(); i++) {ItemStack s = inv.getItem(i);if (!s.isEmpty() && net.minecraftforge.common.ForgeHooks.getBurnTime(s, net.minecraft.world.item.crafting.RecipeType.SMELTING) > 0) return true;}return false;}
+    private static BlockPos findFurnace(CompanionEntity c, int radius) {if (!(c.level() instanceof ServerLevel level)) return null;BlockPos b = c.blockPosition();for (BlockPos pos : BlockPos.betweenClosed(b.offset(-radius, -2, -radius), b.offset(radius, 2, radius))) if (level.getBlockState(pos).is(net.minecraft.world.level.block.Blocks.FURNACE)) return pos.immutable();return null;}
+    private static boolean isLog(String path) { return path.endsWith("_log") || path.endsWith("_stem") || path.endsWith("_wood"); }
+    private static int count(Container inv, Item item) { if (item == null) return 0; int n=0; for (int i=0;i<inv.getContainerSize();i++) if (inv.getItem(i).is(item)) n += inv.getItem(i).getCount(); return n; }
+    private static int countAnyLogs(Container inv) { int n=0; for(int i=0;i<inv.getContainerSize();i++){String p=id(inv.getItem(i).getItem()).substring(id(inv.getItem(i).getItem()).indexOf(':')+1); if(isLog(p)) n+=inv.getItem(i).getCount();} return n; }
+    private static int countAnyPlanks(Container inv) { int n=0; for(int i=0;i<inv.getContainerSize();i++){String p=id(inv.getItem(i).getItem()).substring(id(inv.getItem(i).getItem()).indexOf(':')+1); if(p.endsWith("_planks")) n+=inv.getItem(i).getCount();} return n; }
+    private static Item byId(String id) { net.minecraft.resources.ResourceLocation rl=net.minecraft.resources.ResourceLocation.tryParse(id); return rl==null?null:net.minecraft.core.registries.BuiltInRegistries.ITEM.get(rl); }
+    private static String id(Item item) { if(item==null)return "unknown"; var k=net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item); return k==null?"unknown":k.toString(); }
+    private static String describe(ItemStack[] a){StringBuilder b=new StringBuilder();for(int i=0;i<Math.min(a.length,5);i++){if(i>0)b.append('|');b.append(id(a[i].getItem()));}return b.toString();}
+}
