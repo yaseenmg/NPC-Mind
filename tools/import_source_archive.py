@@ -109,6 +109,7 @@ def main():
     parser.add_argument("--branch", default="source-import-tool", help="Target branch (default: source-import-tool)")
     parser.add_argument("--nested-zip", help="If the archive contains the actual source ZIP, provide its exact path inside the outer ZIP")
     parser.add_argument("--strip-prefix", default="", help="Remove this leading directory from each ZIP path")
+    parser.add_argument("--target-dir", default="npc mind Source", help="Repository directory to place imported files (default: npc mind Source)")
     parser.add_argument("--apply", action="store_true", help="Actually upload and commit; otherwise only preview")
     parser.add_argument("--max-files", type=int, default=500, help="Safety limit for one commit (default: 500)")
     args = parser.parse_args()
@@ -128,6 +129,13 @@ def main():
     if not archive_files:
         print("No files found in the selected ZIP (check --nested-zip / --strip-prefix).")
         return 2
+
+    target_dir = args.target_dir.strip().strip("/")
+    if target_dir and any(part in ("", ".", "..") for part in target_dir.replace("\\\\", "/").split("/")):
+        print(f"Invalid --target-dir: {args.target_dir!r}", file=sys.stderr)
+        return 2
+    if target_dir:
+        archive_files = {f"{target_dir}/{path}": data for path, data in archive_files.items()}
     if len(archive_files) > args.max_files:
         print(f"Safety stop: {len(archive_files)} files exceeds --max-files={args.max_files}.", file=sys.stderr)
         return 2
