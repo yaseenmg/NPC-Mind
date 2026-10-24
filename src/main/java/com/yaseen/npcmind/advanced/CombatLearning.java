@@ -35,7 +35,7 @@ public final class CombatLearning {
     }
     public void load(CompoundTag tag) {
         if (!tag.contains(ROOT)) return; CompoundTag r = tag.getCompound(ROOT);
-        fights = r.getInt("fights"); wins = r.getInt("wins"); retreats = r.getInt("retreats);
+        fights = r.getInt("fights"); wins = r.getInt("wins"); retreats = r.getInt("retreats");
         damageTaken = r.getDouble("taken"); damageDealt = r.getDouble("dealt"); threat.clear();
         CompoundTag t = r.getCompound("threat"); for (String k : t.getAllKeys()) threat.put(k, t.getInt(k));
     }
