@@ -1,0 +1,84 @@
+package com.yaseen.npcmind.advanced;
+
+import com.yaseen.npcmind.autonomy.NavigationArbiter;
+import com.yaseen.npcmind.entity.CompanionEntity;
+import com.yaseen.npcmind.task.TaskManager;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+
+/** Top-priority environmental survival layer (priority 0, above combat, tasks and autonomy). */
+public final class SurvivalGuard {
+    private static final int PERIOD = 5;
+    public static final class State {
+        Vec3 lastPos = Vec3.ZERO;
+        int stuckTicks;
+        int hazardTicks;
+        long lastWarn;
+    }
+    public static boolean tick(CompanionEntity c, State s) {
+        Level level = c.level();
+        if (level.isClientSide() || !c.isAlive() || c.tickCount % PERIOD != 0) return s.hazardTicks > 0;
+        boolean inLava = c.isInLava(), burning = c.isOnFire() && !c.fireImmune();
+        boolean drowning = c.isEyeInFluid(FluidTags.WATER) && c.getAirSupply() < 120;
+        boolean inFireBlock = isFire(level.getBlockState(c.blockPosition()));
+        if (inLava || burning || drowning || inFireBlock) {
+            s.hazardTicks = 20;
+            TaskManager.cancelForReflex(c, inLava ? "lava" : (drowning ? "drowning" : "fire"));
+            if (inLava || drowning) c.setTarget(null);
+            if (c.isUsingItem() && !c.isEating()) c.stopUsingItem();
+            BlockPos safe = findSafe(c, inLava || inFireBlock || (burning && !c.isInWaterOrBubble()), burning);
+            if (safe != null) {
+                NavigationArbiter.request(c, safe, "survival", 1000, 1.4D);
+                c.getMoveControl().setWantedPosition(safe.getX() + 0.5, safe.getY(), safe.getZ() + 0.5, 1.4D);
+            }
+            if (inLava || (drowning && c.isInWater())) c.getJumpControl().jump();
+            if (c.tickCount - s.lastWarn > 200) {
+                s.lastWarn = c.tickCount;
+                if (inLava) c.say("Warning: I am in danger!");
+                else if (drowning) c.say("I am in danger!");
+                else if (burning) c.say("text! I could not complete the request.");
+            }
+            return true;
+        }
+        if (s.hazardTicks > 0) s.hazardTicks -= PERIOD;
+        boolean wantsToMove = !c.getNavigation().isDone();
+        Vec3 now = c.position();
+        if (wantsToMove && now.distanceToSqr(s.lastPos) < 0.04D) {
+            s.stuckTicks += PERIOD;
+            if (s.stuckTicks >= 40 && c.onGround()) c.getJumpControl().jump();
+            if (s.stuckTicks >= 120) { c.getNavigation().stop(); s.stuckTicks = 0; }
+        } else s.stuckTicks = 0;
+        s.lastPos = now;
+        return false;
+    }
+    private static boolean isFire(BlockState st) { return st.is(BlockTags.FIRE); }
+    private static BlockPos findSafe(CompanionEntity c, boolean dryLandOnly, boolean wantWater) {
+        Level level = c.level(); BlockPos origin = c.blockPosition(), best = null;
+        double bestScore = Double.MAX_VALUE; int r = 7;
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) for (int dy = -3; dy <= 3; dy++) {
+            BlockPos p = origin.offset(dx, dy, dz); double score = dx * dx + dz * dz + dy * dy * 2.0D;
+            boolean water = level.getFluidState(p).is(FluidTags.WATER) && !level.getFluidState(p.above()).is(FluidTags.LAVA);
+            if (wantWater && !dryLandOnly && water) score -= 20.0D;
+            else if (!isStandable(level, p)) continue;
+            if (score < bestScore) { bestScore = score; best = p; }
+        }
+        return best;
+    }
+    private static boolean isStandable(Level level, BlockPos feet) {
+        BlockPos below = feet.below();
+        if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.above()).isEmpty()) return false;
+        if (!level.getBlockState(feet).getCollisionShape(level, feet).isEmpty()) return false;
+        if (!level.getBlockState(feet.above()).getCollisionShape(level, feet.above()).isEmpty()) return false;
+        if (isFire(level.getBlockState(feet)) || level.getBlockState(feet).is(net.minecraft.world.level.block.Blocks.CACTUS)) return false;
+        BlockState floor = level.getBlockState(below);
+        if (floor.is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK) || floor.is(net.minecraft.world.level.block.Blocks.CACTUS)) return false;
+        if (!level.getFluidState(below).isEmpty()) return false;
+        return floor.isFaceSturdy(level, below, Direction.UP);
+    }
+    private SurvivalGuard() {}
+}
