@@ -61,69 +61,151 @@ import java.util.Map;
 public final class ToolRegistry {
     private static final Map<String, AITool> TOOLS = new LinkedHashMap<>();
     static {
-        register(new InspectInventoryTool()); register(new InspectNearbyEntitiesTool()); register(new InspectLookBlockTool());
-        register(new LocationTool()); register(new InspectRegistryTool()); register(new RememberTool()); register(new FollowOwnerTool());
-        register(new MoveToTool()); register(new MineBlockTool()); register(new TaskStatusTool()); register(new InspectCompanionInventoryTool());
-        register(new InspectContainerTool()); register(new DepositItemTool()); register(new TakeFromContainerTool()); register(new FindNearbyContainerTool());
-        register(new InspectRecipesTool()); register(new CraftItemTool()); register(new SmeltItemTool()); register(new InspectEquipmentTool());
-        register(new InspectEnergyTool()); register(new CombatStatusTool()); register(new InspectVillagerTradesTool()); register(new TradeWithVillagerTool());
-        register(new SmartVeinMiningTool()); register(new BuildPatternTool()); register(new BuildBlueprintTool()); register(new WorldMemoryTool());
-        register(new GoalTool()); register(new BodyguardTool()); register(new ExploreTool()); register(new StructureSearchTool()); register(new BaseSiteTool());
-        register(new RescueStatusTool()); register(new SmartNavigateTool()); register(new ResourceLedgerTool()); register(new ReserveResourceTool());
-        register(new LoadoutTool()); register(new MaintenanceTool()); register(new AutonomyTool()); register(new TeamTool()); register(new DailyReportTool());
-        register(new PlanAlternativeTool()); register(new FarmAreaTool()); register(new GatherWoodTool()); register(new GatherBlockTool());
-        register(new PlaceBlockTool()); register(new LightAreaTool()); register(new CookFoodTool()); register(new TillAndPlantTool());
-        register(new GatherResourcesTool()); register(new CombatTargetTool()); register(new GiveItemTool()); register(new ExperimentTool()); register(new PermissionTool());
+        register(new InspectInventoryTool());
+        register(new InspectNearbyEntitiesTool());
+        register(new InspectLookBlockTool());
+        register(new LocationTool());
+        register(new InspectRegistryTool());
+        register(new RememberTool());
+        register(new FollowOwnerTool());
+        register(new MoveToTool());
+        register(new MineBlockTool());
+        register(new TaskStatusTool());
+        register(new InspectCompanionInventoryTool());
+        register(new InspectContainerTool());
+        register(new DepositItemTool());
+        register(new TakeFromContainerTool());
+        register(new FindNearbyContainerTool());
+        register(new InspectRecipesTool());
+        register(new CraftItemTool());
+        register(new SmeltItemTool());
+        register(new InspectEquipmentTool());
+        register(new InspectEnergyTool());
+        register(new CombatStatusTool());
+        register(new InspectVillagerTradesTool());
+        register(new TradeWithVillagerTool());
+        register(new SmartVeinMiningTool());
+        register(new BuildPatternTool());
+        register(new BuildBlueprintTool());
+        register(new WorldMemoryTool());
+        register(new GoalTool());
+        register(new BodyguardTool());
+        register(new ExploreTool());
+        register(new StructureSearchTool());
+        register(new BaseSiteTool());
+        register(new RescueStatusTool());
+        register(new SmartNavigateTool());
+        register(new ResourceLedgerTool());
+        register(new ReserveResourceTool());
+        register(new LoadoutTool());
+        register(new MaintenanceTool());
+        register(new AutonomyTool());
+        register(new TeamTool());
+        register(new DailyReportTool());
+        register(new PlanAlternativeTool());
+        register(new FarmAreaTool());
+        register(new GatherWoodTool());
+        register(new GatherBlockTool());
+        register(new PlaceBlockTool());
+        register(new LightAreaTool());
+        register(new CookFoodTool());
+        register(new TillAndPlantTool());
+        register(new GatherResourcesTool());
+        register(new CombatTargetTool());
+        register(new GiveItemTool());
+        register(new ExperimentTool());
+        register(new PermissionTool());
     }
+
     private static void register(AITool tool) { TOOLS.put(tool.name(), tool); }
+
+    /** Adds a host-mod capability to the shared catalog during common setup. */
     public static synchronized void registerExternal(AITool tool) {
-        if (tool == null || tool.name() == null || tool.name().isBlank()) throw new IllegalArgumentException("A tool with a non-blank name is required");
+        if (tool == null || tool.name() == null || tool.name().isBlank()) {
+            throw new IllegalArgumentException("A tool with a non-blank name is required");
+        }
         TOOLS.put(tool.name(), tool);
     }
+    /** Optional English aliases for common host-mod input. Duplicate aliases are harmless. */
     private static final Map<String, String> ALIASES = buildAliases();
     private static Map<String, String> buildAliases() {
         Map<String, String> aliases = new java.util.HashMap<>();
-        aliases.putIfAbsent("attack", "combat_target"); aliases.putIfAbsent("fight", "combat_target");
-        aliases.putIfAbsent("follow", "follow_owner"); aliases.putIfAbsent("come", "follow_owner");
-        aliases.putIfAbsent("mine", "mine_block"); aliases.putIfAbsent("explore", "explore_mode");
-        aliases.putIfAbsent("search", "search_structure"); aliases.putIfAbsent("loadout", "prepare_loadout");
+        aliases.putIfAbsent("attack", "combat_target");
+        aliases.putIfAbsent("fight", "combat_target");
+        aliases.putIfAbsent("follow", "follow_owner");
+        aliases.putIfAbsent("come", "follow_owner");
+        aliases.putIfAbsent("mine", "mine_block");
+        aliases.putIfAbsent("explore", "explore_mode");
+        aliases.putIfAbsent("search", "search_structure");
+        aliases.putIfAbsent("loadout", "prepare_loadout");
         aliases.putIfAbsent("world_memory", "inspect_world_memory");
         return java.util.Collections.unmodifiableMap(aliases);
     }
     public static AITool get(String name) {
         if (name == null) return null;
-        String trimmed = name.trim(); AITool direct = TOOLS.get(trimmed); if (direct != null) return direct;
-        String mapped = ALIASES.get(trimmed.toLowerCase(java.util.Locale.ROOT)); return mapped == null ? null : TOOLS.get(mapped);
+        String trimmed = name.trim();
+        AITool direct = TOOLS.get(trimmed);
+        if (direct != null) return direct;
+        String mapped = ALIASES.get(trimmed.toLowerCase(java.util.Locale.ROOT));
+        return mapped == null ? null : TOOLS.get(mapped);
     }
     public static Collection<AITool> all() { return TOOLS.values(); }
-    public static String definitionsFor(String message) { return definitions(); }
+
+    /** Returns a language-neutral catalog. Host mods own localization and intent routing. */
+    public static String definitionsFor(String message) {
+        return definitions();
+    }
+
+    /** Native tool declarations for the small, relevant surface. The complete 55-tool registry remains authoritative;
+     * the model sees only the tools relevant to this request, following current agent/tool-use guidance. */
     public static com.google.gson.JsonArray jsonToolDefinitionsFor(String message) {
-        String defs = definitionsFor(message); java.util.Set<String> selected = new java.util.LinkedHashSet<>();
-        for (String line : defs.split("\n")) if (line.startsWith("TOOL ")) selected.add(line.substring(5).trim());
+        String defs = definitionsFor(message);
+        java.util.Set<String> selected = new java.util.LinkedHashSet<>();
+        for (String line : defs.split("\\n")) {
+            if (line.startsWith("TOOL ")) selected.add(line.substring(5).trim());
+        }
         com.google.gson.JsonArray out = new com.google.gson.JsonArray();
-        for (AITool t : TOOLS.values()) if (selected.contains(t.name())) {
-            com.google.gson.JsonObject fn = new com.google.gson.JsonObject(); fn.addProperty("name", t.name()); fn.addProperty("description", t.description());
-            fn.add("parameters", ToolContract.toJsonSchema(t)); fn.addProperty("strict", false);
+        for (AITool t : TOOLS.values()) {
+            if (!selected.contains(t.name())) continue;
+            com.google.gson.JsonObject fn = new com.google.gson.JsonObject();
+            fn.addProperty("name", t.name()); fn.addProperty("description", t.description()); fn.add("parameters", ToolContract.toJsonSchema(t)); fn.addProperty("strict", false);
             com.google.gson.JsonObject wrapper = new com.google.gson.JsonObject(); wrapper.addProperty("type", "function"); wrapper.add("function", fn); out.add(wrapper);
         }
         return out;
     }
+
+    /** Provider-neutral JSON Schema tool declarations for strict function/tool calling. */
     public static com.google.gson.JsonArray jsonToolDefinitions() {
         com.google.gson.JsonArray out = new com.google.gson.JsonArray();
         for (AITool t : TOOLS.values()) {
-            com.google.gson.JsonObject fn = new com.google.gson.JsonObject(); fn.addProperty("name", t.name()); fn.addProperty("description", t.description());
+            com.google.gson.JsonObject fn = new com.google.gson.JsonObject();
+            fn.addProperty("name", t.name());
+            fn.addProperty("description", t.description());
             fn.add("parameters", ToolContract.toJsonSchema(t)); fn.addProperty("strict", false);
-            com.google.gson.JsonObject wrapper = new com.google.gson.JsonObject(); wrapper.addProperty("type", "function"); wrapper.add("function", fn); out.add(wrapper);
+            com.google.gson.JsonObject wrapper = new com.google.gson.JsonObject();
+            wrapper.addProperty("type", "function");
+            wrapper.add("function", fn);
+            out.add(wrapper);
         }
         return out;
     }
+
+    /** Compact catalog used by small models before a detailed tool call is emitted. */
     public static String compactCatalog() {
-        StringBuilder b = new StringBuilder(); for (AITool t : TOOLS.values()) b.append(t.name()).append(" :: ").append(t.description()).append(" :: ").append(t.schema()).append('\n');
+        StringBuilder b = new StringBuilder();
+        for (AITool t : TOOLS.values()) {
+            b.append(t.name()).append(" :: ").append(t.description()).append(" :: ").append(t.schema()).append('\n');
+        }
         return b.toString();
     }
+
     public static String definitions() {
         StringBuilder b = new StringBuilder();
-        for (AITool t : TOOLS.values()) b.append("TOOL ").append(t.name()).append('\n').append(t.description()).append('\n').append("ARGUMENTS ").append(t.schema()).append("\n\n");
+        for (AITool t : TOOLS.values()) {
+            b.append("TOOL ").append(t.name()).append('\n');
+            b.append(t.description()).append('\n');
+            b.append("ARGUMENTS ").append(t.schema()).append("\n\n");
+        }
         return b.toString();
     }
     private ToolRegistry() {}

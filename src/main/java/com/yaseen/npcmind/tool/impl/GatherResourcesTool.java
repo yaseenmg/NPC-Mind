@@ -6,7 +6,6 @@ import com.yaseen.npcmind.state.ActionPermissions;
 import com.yaseen.npcmind.task.TaskManager;
 import com.yaseen.npcmind.tool.AITool;
 import com.yaseen.npcmind.tool.JsonArgs;
-
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Locale;

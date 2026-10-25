@@ -11,23 +11,34 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-/** Top-priority environmental survival layer (priority 0, above combat, tasks and autonomy). */
+/**
+ * Top-priority environmental survival layer (priority 0, above combat, tasks and autonomy).
+ * Handles lava, fire, drowning and being stuck while travelling. Returns true while it owns the
+ * entity so lower layers (combat/tasks) are skipped for that tick.
+ */
 public final class SurvivalGuard {
     private static final int PERIOD = 5;
+
+    // Per-companion state is kept on the instance through this small holder.
     public static final class State {
         Vec3 lastPos = Vec3.ZERO;
         int stuckTicks;
         int hazardTicks;
         long lastWarn;
     }
+
     public static boolean tick(CompanionEntity c, State s) {
         Level level = c.level();
         if (level.isClientSide() || !c.isAlive() || c.tickCount % PERIOD != 0) return s.hazardTicks > 0;
-        boolean inLava = c.isInLava(), burning = c.isOnFire() && !c.fireImmune();
+
+        boolean inLava = c.isInLava();
+        boolean burning = c.isOnFire() && !c.fireImmune();
         boolean drowning = c.isEyeInFluid(FluidTags.WATER) && c.getAirSupply() < 120;
         boolean inFireBlock = isFire(level.getBlockState(c.blockPosition()));
+
         if (inLava || burning || drowning || inFireBlock) {
             s.hazardTicks = 20;
+            // A fight is not worth dying for.
             TaskManager.cancelForReflex(c, inLava ? "lava" : (drowning ? "drowning" : "fire"));
             if (inLava || drowning) c.setTarget(null);
             if (c.isUsingItem() && !c.isEating()) c.stopUsingItem();
@@ -46,29 +57,56 @@ public final class SurvivalGuard {
             return true;
         }
         if (s.hazardTicks > 0) s.hazardTicks -= PERIOD;
+
+        // Stuck detector: trying to walk somewhere but not actually moving.
         boolean wantsToMove = !c.getNavigation().isDone();
         Vec3 now = c.position();
         if (wantsToMove && now.distanceToSqr(s.lastPos) < 0.04D) {
             s.stuckTicks += PERIOD;
             if (s.stuckTicks >= 40 && c.onGround()) c.getJumpControl().jump();
-            if (s.stuckTicks >= 120) { c.getNavigation().stop(); s.stuckTicks = 0; }
-        } else s.stuckTicks = 0;
+            if (s.stuckTicks >= 120) {
+                c.getNavigation().stop();
+                s.stuckTicks = 0;
+            }
+        } else {
+            s.stuckTicks = 0;
+        }
         s.lastPos = now;
         return false;
     }
-    private static boolean isFire(BlockState st) { return st.is(BlockTags.FIRE); }
+
+    private static boolean isFire(BlockState st) {
+        return st.is(BlockTags.FIRE);
+    }
+
+    /** Nearest standable, non-hazardous block. When burning (and not in lava) water is preferred. */
     private static BlockPos findSafe(CompanionEntity c, boolean dryLandOnly, boolean wantWater) {
-        Level level = c.level(); BlockPos origin = c.blockPosition(), best = null;
-        double bestScore = Double.MAX_VALUE; int r = 7;
-        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) for (int dy = -3; dy <= 3; dy++) {
-            BlockPos p = origin.offset(dx, dy, dz); double score = dx * dx + dz * dz + dy * dy * 2.0D;
-            boolean water = level.getFluidState(p).is(FluidTags.WATER) && !level.getFluidState(p.above()).is(FluidTags.LAVA);
-            if (wantWater && !dryLandOnly && water) score -= 20.0D;
-            else if (!isStandable(level, p)) continue;
-            if (score < bestScore) { bestScore = score; best = p; }
+        Level level = c.level();
+        BlockPos origin = c.blockPosition();
+        BlockPos best = null;
+        double bestScore = Double.MAX_VALUE;
+        int r = 7;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                for (int dy = -3; dy <= 3; dy++) {
+                    BlockPos p = origin.offset(dx, dy, dz);
+                    double score = dx * dx + dz * dz + dy * dy * 2.0D;
+                    boolean water = level.getFluidState(p).is(FluidTags.WATER) && !level.getFluidState(p.above()).is(FluidTags.LAVA);
+                    if (wantWater && !dryLandOnly && water) {
+                        score -= 20.0D; // a water block puts the fire out
+                    } else if (!isStandable(level, p)) {
+                        continue;
+                    }
+                    if (score < bestScore) {
+                        bestScore = score;
+                        best = p;
+                    }
+                }
+            }
         }
         return best;
     }
+
     private static boolean isStandable(Level level, BlockPos feet) {
         BlockPos below = feet.below();
         if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.above()).isEmpty()) return false;
@@ -80,5 +118,6 @@ public final class SurvivalGuard {
         if (!level.getFluidState(below).isEmpty()) return false;
         return floor.isFaceSturdy(level, below, Direction.UP);
     }
+
     private SurvivalGuard() {}
 }

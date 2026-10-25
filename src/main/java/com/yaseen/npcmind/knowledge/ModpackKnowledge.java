@@ -3,6 +3,7 @@ package com.yaseen.npcmind.knowledge;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.fml.ModList;
 import java.util.Locale;

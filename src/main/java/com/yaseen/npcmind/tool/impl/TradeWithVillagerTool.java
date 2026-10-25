@@ -12,11 +12,11 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.MerchantOffer;
 
-public final class TradeWithVillagerTool implements AITool{
+public final class TradeWithVillagerTool implements AITool {
     public String name(){return "trade_with_villager";}
     public String description(){return "Execute one real available Villager trade using the companion inventory. Choose an offer index returned by inspect_villager_trades; no price is invented or changed.";}
     public String schema(){return "{\"offer\":number}";}
-    public String execute(CompanionEntity c,ServerPlayer p,String a){
+    public String execute(CompanionEntity c, ServerPlayer p, String a){
         if(!c.getPermissions().allowed(ActionPermissions.Action.TRADE)) return "DENIED permission=trade";
         Integer idx=MoveToTool.num(a,"offer"); if(idx==null)return "FAILED offer index required";
         Villager v=p.serverLevel().getEntitiesOfClass(Villager.class,p.getBoundingBox().inflate(16),x->x.isAlive()).stream().min((x,y)->Double.compare(p.distanceToSqr(x),p.distanceToSqr(y))).orElse(null);

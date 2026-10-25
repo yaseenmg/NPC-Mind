@@ -2,6 +2,8 @@ package com.yaseen.npcmind.team;
 
 import com.yaseen.npcmind.entity.CompanionEntity;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import java.util.*;
 
 /** Persistent team roles for multiple real companions. No phantom NPCs are created here. */

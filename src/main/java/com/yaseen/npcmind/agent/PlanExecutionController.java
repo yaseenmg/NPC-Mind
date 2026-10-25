@@ -22,6 +22,9 @@ public final class PlanExecutionController {
 
     public static Checkpoint begin(UUID companionId, String goal) {
         return PLANS.compute(companionId, (id, old) -> {
+            // Reset the plan only when the goal actually changes. The old `contains`
+            // test kept a stale checkpoint whenever the new goal merely CONTAINED the
+            // previous one as a substring (and always kept it when old.goal() was empty).
             String oldGoal = old == null || old.goal() == null ? "" : old.goal().trim();
             String newGoal = goal == null ? "" : goal.trim();
             if (old == null || newGoal.isBlank() || !newGoal.equals(oldGoal)) {

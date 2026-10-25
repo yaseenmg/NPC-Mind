@@ -33,7 +33,7 @@ public final class WorldActionSecurity {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(ev);
             return !ev.isCanceled() && ev.getUseBlock() != net.minecraftforge.eventbus.api.Event.Result.DENY;
         } catch (Throwable t) {
-            return false;
+            return false; // fail closed
         }
     }
 

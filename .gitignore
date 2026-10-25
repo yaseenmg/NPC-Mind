@@ -13,7 +13,7 @@ config/
 .env
 .env.*
 
-# IDE and OS
+# IDE and OS files
 .idea/
 *.iml
 .classpath

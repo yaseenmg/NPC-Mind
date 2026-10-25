@@ -20,16 +20,19 @@ public final class BodyguardController {
         if(c.level().isClientSide()||c.tickCount%10!=0||!enabled(c))return;
         if(!(c.getOwnerPlayer() instanceof ServerPlayer p))return;
         if(c.getTarget()!=null && c.getTarget().isAlive()) return;
+        // Bodyguard mode only reacts to an actual attack on the owner. A nearby
+        // monster that is doing nothing is NOT a valid target.
         LivingEntity target=null; double best=Double.MAX_VALUE;
         for(LivingEntity e:c.level().getEntitiesOfClass(LivingEntity.class,p.getBoundingBox().inflate(12),x->x.isAlive()&&x!=p&&x!=c)){
             if(!(e instanceof Monster)) continue;
             boolean attackingOwner = e instanceof net.minecraft.world.entity.Mob mob && mob.getTarget()==p;
             if(!attackingOwner) continue;
-            double d=p.distanceToSqr(e); if(d<best){best=d;target=e;}
+            double d=p.distanceToSqr(e);
+            if(d<best){best=d;target=e;}
         }
-        if(target!=null){TaskManager.cancelCurrentTask(c);c.setTarget(target);NavigationArbiter.request(c,target,"bodyguard",700,1.25);}
-        else if(p.getHealth()<=p.getMaxHealth()*.35 && c.distanceToSqr(p)>25){NavigationArbiter.request(c,p,"bodyguard",700,1.35);}
-        else if(c.distanceToSqr(p)>36 && c.isFollowEnabled()){NavigationArbiter.request(c,p,"follow",300,1.25);}
+        if(target!=null){TaskManager.cancelCurrentTask(c);c.setTarget(target);NavigationArbiter.request(c, target, "bodyguard", 700, 1.25);}
+        else if(p.getHealth()<=p.getMaxHealth()*.35 && c.distanceToSqr(p)>25){NavigationArbiter.request(c, p, "bodyguard", 700, 1.35);}
+        else if(c.distanceToSqr(p)>36 && c.isFollowEnabled()){NavigationArbiter.request(c, p, "follow", 300, 1.25);}
     }
     public static void clear(UUID id){ENABLED.remove(id);}
     private BodyguardController(){}

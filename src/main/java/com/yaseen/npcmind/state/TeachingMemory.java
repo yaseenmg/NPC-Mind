@@ -1,7 +1,9 @@
 package com.yaseen.npcmind.state;
 
+import com.yaseen.npcmind.entity.CompanionEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;

@@ -7,6 +7,7 @@ import com.yaseen.npcmind.tool.AITool;
 import com.yaseen.npcmind.tool.ToolContract;
 import com.yaseen.npcmind.tool.ToolRegistry;
 import net.minecraft.server.level.ServerPlayer;
+import java.util.UUID;
 
 /** Common deterministic executor used by both LLM-facing and internal planners. */
 public final class InternalToolExecutor {

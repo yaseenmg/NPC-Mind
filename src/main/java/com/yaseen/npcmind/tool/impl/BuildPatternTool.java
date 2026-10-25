@@ -47,6 +47,7 @@ public final class BuildPatternTool implements AITool {
         return "FAILED no_blocks_placed requested="+targets.size()+" block="+id+" pattern="+pattern;
     }
     private static boolean hasUnreservedBlock(CompanionEntity c, Block b){ for(int i=0;i<c.getCompanionInventory().getContainerSize();i++){ ItemStack st=c.getCompanionInventory().getItem(i); if(!st.isEmpty() && Block.byItem(st.getItem())==b && ResourceLedger.canConsume(c,st,1)) return true; } return false; }
+
     private static boolean hasOne(net.minecraft.world.Container inv,Block b){for(int i=0;i<inv.getContainerSize();i++){ItemStack st=inv.getItem(i);if(!st.isEmpty()&&Block.byItem(st.getItem())==b)return true;}return false;}
     private static boolean takeUnreservedOne(CompanionEntity c,Block b){for(int i=0;i<c.getCompanionInventory().getContainerSize();i++){ItemStack s=c.getCompanionInventory().getItem(i);if(!s.isEmpty()&&Block.byItem(s.getItem())==b&&ResourceLedger.canConsume(c,s,1)){s.shrink(1);if(s.isEmpty())c.getCompanionInventory().setItem(i,ItemStack.EMPTY);return true;}}return false;}
     private static int clamp(int x,int a,int b){return Math.max(a,Math.min(b,x));}

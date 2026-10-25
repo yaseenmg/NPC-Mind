@@ -28,4 +28,5 @@ dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
 }
 tasks.withType(JavaCompile).configureEach { options.encoding='UTF-8' }
+// ForgeGradle 6: without this the jar keeps official (non-SRG) names and crashes outside the dev environment.
 jar.finalizedBy('reobfJar')

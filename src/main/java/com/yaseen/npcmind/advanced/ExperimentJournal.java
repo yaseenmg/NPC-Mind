@@ -1,5 +1,6 @@
 package com.yaseen.npcmind.advanced;
 
+import com.yaseen.npcmind.state.DecisionJournal;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;

@@ -7,6 +7,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.ProjectileWeaponItem;
 
 /**
  * Player2NPC/Hiromi-inspired item acceptance boundary.
@@ -30,6 +32,7 @@ public final class CompanionItemHandler {
             if (EquipmentAnalyzer.armorScore(stack, armorSlot)
                     > EquipmentAnalyzer.armorScore(current, armorSlot)) {
                 if (!current.isEmpty() && !InventoryOps.canAdd(companion.getCompanionInventory(), current)) {
+                    // Atomic swap: never partially insert the old armor and then abort.
                     return stack;
                 }
                 if (!current.isEmpty()) InventoryOps.add(companion.getCompanionInventory(), current.copy());
@@ -49,7 +52,7 @@ public final class CompanionItemHandler {
             }
         }
 
-        if (EquipmentAnalyzer.isCombatWeapon(stack)) {
+        if (isWeapon(stack)) {
             ItemStack current = companion.getItemBySlot(EquipmentSlot.MAINHAND);
             if (EquipmentAnalyzer.combatScore(stack, false)
                     > EquipmentAnalyzer.combatScore(current, false)) {
@@ -61,12 +64,18 @@ public final class CompanionItemHandler {
             }
         }
 
+        // Food and ordinary resources deliberately go through the normal inventory.
+        // This prevents the old "food/wood becomes equipment" class of bugs.
         boolean incomingFood = stack.isEdible();
         ItemStack remainder = InventoryOps.addAndReturnRemainder(
                 companion.getCompanionInventory(), stack);
         companion.getCompanionInventory().setChanged();
 
+        // Hiromi-style immediate reaction: if the companion is actually hungry,
+        // receiving food should wake the eating state instead of waiting for the
+        // next autonomous decision cycle.  No phrase/keyword is involved.
         if (incomingFood && remainder.getCount() < stack.getCount() && !companion.isUsingItem()) {
+            // Hurt -> may use the best healing item (golden apples included); otherwise only if hungry.
             boolean hurt = companion.getHealth() < companion.getMaxHealth() - 1.0F;
             if (!companion.startEating(hurt)) {
                 companion.say("I could not complete the request.");
@@ -85,6 +94,7 @@ public final class CompanionItemHandler {
     }
 
     public static boolean isWeapon(ItemStack stack) {
-        return stack != null && !stack.isEmpty() && EquipmentAnalyzer.isCombatWeapon(stack);
+        if (stack == null || stack.isEmpty()) return false;
+        return EquipmentAnalyzer.isCombatWeapon(stack);
     }
 }

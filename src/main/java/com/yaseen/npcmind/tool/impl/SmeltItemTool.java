@@ -19,7 +19,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.util.Locale;
 
-/** Uses an actual furnace/smoker/blast-furnace block entity. No synthetic smelting is performed. */
+/**
+ * Uses an actual furnace/smoker/blast-furnace block entity. No synthetic smelting is performed.
+ * The tool loads a real input and real fuel into the real furnace and lets Minecraft tick it.
+ */
 public final class SmeltItemTool implements AITool {
     @Override public String name() { return "smelt_item"; }
     @Override public String description() {

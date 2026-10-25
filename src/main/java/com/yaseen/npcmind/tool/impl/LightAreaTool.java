@@ -10,13 +10,19 @@ import com.yaseen.npcmind.tool.JsonArgs;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
+
 import java.util.Locale;
 
-/** Places real light sources along the companion's facing direction. */
+/**
+ * "status update / status update 5 text". Places a light source (torch by default, or candle /
+ * lantern) on the ground every {@code spacing} blocks along the companion's facing direction. If
+ * the companion has no light source but can craft torches from its own materials, it crafts first.
+ */
 public final class LightAreaTool implements AITool {
     public String name(){ return "light_area"; }
     public String description(){ return "Light up an area by placing a light source (torch, candle or lantern) on the ground every N blocks in front of the companion. No coordinates needed. If it has no torches but owns coal/sticks, it crafts torches first."; }
@@ -33,6 +39,7 @@ public final class LightAreaTool implements AITool {
         Integer cn = JsonArgs.integer(a, "count");
         int count = cn == null ? 8 : Math.max(1, Math.min(32, cn));
 
+        // Make sure we actually own a light block; try to craft torches if the player asked for torches.
         int slot = PlaceBlockTool.findBlockSlot(c, light);
         boolean crafted = false;
         if(slot < 0 && (light.contains("torch") || light.contains("text"))){
@@ -71,13 +78,15 @@ public final class LightAreaTool implements AITool {
         return "FAILED no_valid_spot light=" + light;
     }
 
+    /** Air cell that sits directly on a solid floor (so a torch/candle can stand). */
     private static BlockPos airOnFloor(Level lvl, BlockPos at){
         for(int dy=1; dy>=-2; dy--){
             BlockPos pos = at.above(dy);
             if(!lvl.isLoaded(pos)) continue;
             BlockState here = lvl.getBlockState(pos);
             BlockState below = lvl.getBlockState(pos.below());
-            if((here.isAir() || here.canBeReplaced()) && below.isFaceSturdy(lvl, pos.below(), Direction.UP)) return pos.immutable();
+            if((here.isAir() || here.canBeReplaced()) && below.isFaceSturdy(lvl, pos.below(), Direction.UP))
+                return pos.immutable();
         }
         return null;
     }

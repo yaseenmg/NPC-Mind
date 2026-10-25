@@ -13,7 +13,7 @@ public final class InspectCompanionInventoryTool implements AITool {
     public String schema(){ return "{}"; }
     public String execute(CompanionEntity c, ServerPlayer p, String a){
         Container inv=c.getCompanionInventory();
-        StringBuilder b=new StringBuilder("REAL_COMPANION_INVENTORY\n");
+        StringBuilder b=new StringBuilder("REAL_COMPANION_INVENTORY\\n");
         for(int i=0;i<inv.getContainerSize();i++){
             ItemStack s=inv.getItem(i);
             if(!s.isEmpty()) b.append(i).append('=').append(ModpackKnowledge.itemInfo(s)).append(" x").append(s.getCount()).append('\n');

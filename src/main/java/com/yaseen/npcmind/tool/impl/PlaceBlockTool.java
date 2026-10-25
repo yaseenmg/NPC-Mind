@@ -49,13 +49,14 @@ public final class PlaceBlockTool implements AITool {
         for(BlockPos pos : spots){
             if(placed >= count) break;
             int s = findBlockSlot(c, keyword);
-            if(s < 0) break;
+            if(s < 0) break;                                   // ran out of this block
             BlockState state = block.defaultBlockState();
             if(!state.canSurvive(c.level(), pos)) continue;
             if(!WorldActionSecurity.canPlaceBlock(c, owner, pos)) continue;
             if(c.level().setBlockAndUpdate(pos, state)){
                 c.playAnimationAction((byte) 2, 4);
                 c.getCompanionInventory().removeItem(s, 1);
+                // Direct world mutation does not create the player hand animation.
                 c.getLookControl().setLookAt(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D,
                         30.0F, 30.0F);
                 c.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
@@ -70,7 +71,13 @@ public final class PlaceBlockTool implements AITool {
         return "FAILED no_valid_spot block=" + keyword;
     }
 
-    /** Find an inventory slot holding a BlockItem that best matches the keyword. */
+    /**
+     * Find an inventory slot holding a BlockItem that best matches the keyword.
+     * A plain {@code contains} test was wrong: "stone" also matched "redstone_block",
+     * so asking for stone could place redstone. We now score candidates and pick the
+     * most specific: exact path == keyword, then word-boundary match (oak_PLANKS,
+     * STONE_bricks), then a loose contains only as a last resort.
+     */
     static int findBlockSlot(CompanionEntity c, String keyword){
         int best = -1, bestScore = 0;
         for(int i=0;i<c.getCompanionInventory().getContainerSize();i++){
@@ -94,6 +101,7 @@ public final class PlaceBlockTool implements AITool {
         BlockPos base = c.blockPosition();
         Direction facing = c.getDirection();
         List<BlockPos> out = new ArrayList<>();
+        // Walk forward up to 6 blocks, placing on the ground; then widen to a small ring as a fallback.
         for(int step=1; step<=6; step++){
             BlockPos ahead = base.relative(facing, step);
             BlockPos spot = groundSpot(lvl, ahead);
@@ -107,6 +115,7 @@ public final class PlaceBlockTool implements AITool {
         return out;
     }
 
+    /** From a column near {@code at}, find a replaceable cell that has a solid block beneath it. */
     private static BlockPos groundSpot(Level lvl, BlockPos at){
         for(int dy=1; dy>=-2; dy--){
             BlockPos pos = at.above(dy);

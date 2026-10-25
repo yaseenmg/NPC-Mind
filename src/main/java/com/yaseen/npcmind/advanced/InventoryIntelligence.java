@@ -8,6 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 
 /** Conservative automatic inventory housekeeping: only clearly obsolete equipment is discarded. */
@@ -23,14 +24,20 @@ public final class InventoryIntelligence {
                 ItemStack s=inv.getItem(i);
                 if(s.isEmpty() || !(s.getItem() instanceof ArmorItem)) continue;
                 double score=EquipmentAnalyzer.armorScore(s,slot);
-                if(score >= 0 && best > score + 2.0 && EnchantmentHelper.getEnchantments(s).isEmpty() && isInventoryFull(inv)) {
+                // Keep an actually useful spare, but remove obviously obsolete unenchanted armor.
+                if(score >= 0 && best > score + 2.0 && EnchantmentHelper.getEnchantments(s).isEmpty()
+                        && isInventoryFull(inv)) {
                     c.spawnAtLocation(s.copy()); inv.setItem(i,ItemStack.EMPTY);
                 }
             }
         }
-        int best1=-1,best2=-1; double s1=-1,s2=-1; int ranged=-1; double rs=-1;
+        // Duplicate combat tools: keep the two best melee weapons and one best ranged weapon.
+        int best1=-1,best2=-1; double s1=-1,s2=-1;
+        int ranged=-1; double rs=-1;
         for(int i=0;i<inv.getContainerSize();i++) {
             ItemStack s=inv.getItem(i); if(s.isEmpty())continue;
+            // Mining/farming tools are not disposable combat duplicates. Only actual swords
+            // participate in combat-tool pruning; a pickaxe/axe/shovel may be needed later.
             if(s.getItem() instanceof SwordItem) {
                 double v=EquipmentAnalyzer.combatScore(s,false);
                 if(v>s1){s2=s1;best2=best1;s1=v;best1=i;} else if(v>s2){s2=v;best2=i;}
@@ -40,17 +47,24 @@ public final class InventoryIntelligence {
                 if(v>rs){rs=v;ranged=i;}
             }
         }
+        // Keep a small reserve: a player-like companion should not throw away the only spare
+        // weapon. Only discard a third+ unenchanted duplicate when there are already at least
+        // two useful alternatives of the same combat role.
         int swordCount = 0, rangedCount = 0;
         for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack s = inv.getItem(i); if (s.isEmpty()) continue;
+            ItemStack s = inv.getItem(i);
+            if (s.isEmpty()) continue;
             if (s.getItem() instanceof SwordItem) swordCount++;
             if (s.getItem() instanceof BowItem || s.getItem() instanceof CrossbowItem) rangedCount++;
         }
         if (isInventoryFull(inv)) for(int i=0;i<inv.getContainerSize();i++) {
             if(i==best1||i==best2||i==ranged)continue;
             ItemStack s=inv.getItem(i); if(s.isEmpty()||EnchantmentHelper.getEnchantments(s).size()>0)continue;
-            if(s.getItem() instanceof SwordItem && swordCount > 2) { c.spawnAtLocation(s.copy()); inv.setItem(i,ItemStack.EMPTY); swordCount--; }
-            else if((s.getItem() instanceof BowItem || s.getItem() instanceof CrossbowItem) && rangedCount > 1) { c.spawnAtLocation(s.copy()); inv.setItem(i,ItemStack.EMPTY); rangedCount--; }
+            if(s.getItem() instanceof SwordItem && swordCount > 2) {
+                c.spawnAtLocation(s.copy()); inv.setItem(i,ItemStack.EMPTY); swordCount--;
+            } else if((s.getItem() instanceof BowItem || s.getItem() instanceof CrossbowItem) && rangedCount > 1) {
+                c.spawnAtLocation(s.copy()); inv.setItem(i,ItemStack.EMPTY); rangedCount--;
+            }
         }
         inv.setChanged();
     }

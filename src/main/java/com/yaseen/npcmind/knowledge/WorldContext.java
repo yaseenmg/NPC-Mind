@@ -2,12 +2,17 @@ package com.yaseen.npcmind.knowledge;
 
 import com.yaseen.npcmind.Config;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -38,11 +43,12 @@ public final class WorldContext {
         }
         out.append('\n');
 
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         String centerBlock = player.serverLevel().getBlockState(pos).getBlock().getDescriptionId();
         out.append("block_under_player=").append(centerBlock).append('\n');
         out.append("environment=").append(environment(player)).append('\n');
 
-        var nearby = player.serverLevel()
+        List<Entity> nearby = player.serverLevel()
                 .getEntities(player, player.getBoundingBox().inflate(radius))
                 .stream()
                 .filter(e -> e != player)
@@ -61,7 +67,11 @@ public final class WorldContext {
                     .append(']');
         }
         out.append('\n');
-        out.append("installed_mod_namespaces=").append(ModpackKnowledge.installedMods()).append('\n');
+
+        out.append("installed_mod_namespaces=");
+        out.append(ModpackKnowledge.installedMods());
+        out.append('\n');
+
         return out.toString();
     }
 

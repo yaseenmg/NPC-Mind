@@ -24,6 +24,8 @@ public final class AutonomyActionRouter {
         if (now < NEXT_ALLOWED.getOrDefault(c.getUUID(), Long.MIN_VALUE)) return false;
         NEXT_ALLOWED.put(c.getUUID(), now + COOLDOWN);
 
+        // Survival is handled above this router, but food is a useful autonomous action
+        // even when no hostile target exists.
         if (c.getFoodLevel() <= 8 && c.startEatingFromInventory()) {
             c.getAutonomy().routineDone("eat_food", now);
             return true;
@@ -41,6 +43,8 @@ public final class AutonomyActionRouter {
                 args = "{\"radius\":6,\"replant\":true}";
             }
             case ENGINEER -> {
+                // Engineer mode first acquires starter material; construction tools can then
+                // use the real inventory instead of repeatedly failing for missing blocks.
                 tool = c.getCompanionInventory().countItem(Items.OAK_PLANKS) < 16
                         ? "gather_resources" : "inspect_companion_inventory";
                 args = tool.equals("gather_resources")
@@ -62,6 +66,8 @@ public final class AutonomyActionRouter {
             c.say("Status: " + tool + ".");
             return true;
         }
+        // A failed deterministic probe is still useful: the next LLM cycle sees the exact
+        // result in AgentMemory and can choose a different tool, but we do not spam every tick.
         return result != null && (result.startsWith("SUCCESS") || result.startsWith("RESULT"));
     }
 

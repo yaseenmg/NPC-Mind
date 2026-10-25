@@ -6,6 +6,8 @@ import com.yaseen.npcmind.task.TaskManager;
 import com.yaseen.npcmind.state.SkillProgression;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import java.util.UUID;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

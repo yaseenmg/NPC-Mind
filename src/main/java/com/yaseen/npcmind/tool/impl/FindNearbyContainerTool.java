@@ -12,7 +12,7 @@ public final class FindNearbyContainerTool implements AITool {
     public String schema(){return "{\"radius\":number(optional)}";}
     public String execute(CompanionEntity c, ServerPlayer p, String a){
         Integer radius=MoveToTool.num(a,"radius"); if(radius==null)radius=8; radius=Math.max(1,Math.min(radius,16));
-        BlockPos base=c.blockPosition(); StringBuilder b=new StringBuilder("REAL_CONTAINERS\n"); int found=0;
+        BlockPos base=c.blockPosition(); StringBuilder b=new StringBuilder("REAL_CONTAINERS\\n"); int found=0;
         for(BlockPos pos:BlockPos.betweenClosed(base.offset(-radius,-radius,-radius),base.offset(radius,radius,radius))){
             if(c.level().getBlockEntity(pos) instanceof Container){
                 b.append(pos.getX()).append(',').append(pos.getY()).append(',').append(pos.getZ()).append(' ').append(c.level().getBlockState(pos).getBlock().getDescriptionId()).append('\n');

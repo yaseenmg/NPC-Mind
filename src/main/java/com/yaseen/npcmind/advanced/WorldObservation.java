@@ -1,6 +1,7 @@
 package com.yaseen.npcmind.advanced;
 
 import com.yaseen.npcmind.entity.CompanionEntity;
+import com.yaseen.npcmind.state.WorldMemory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.Villager;

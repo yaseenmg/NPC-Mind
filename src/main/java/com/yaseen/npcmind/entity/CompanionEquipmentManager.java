@@ -6,6 +6,9 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.CrossbowItem;
 
 /**
  * Player2NPC-inspired equipment bridge. Inventory and equipment are separate,
@@ -33,10 +36,13 @@ public final class CompanionEquipmentManager {
             return stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == slot;
         }
         if (slot == EquipmentSlot.OFFHAND) return stack.getItem() instanceof ShieldItem;
-        if (slot == EquipmentSlot.MAINHAND) return EquipmentAnalyzer.isCombatWeapon(stack);
+        if (slot == EquipmentSlot.MAINHAND) {
+            return EquipmentAnalyzer.isCombatWeapon(stack);
+        }
         return false;
     }
 
+    /** Equip only when the item is actually useful; ordinary blocks never become equipment. */
     public static boolean autoEquip(CompanionEntity c, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
         if (stack.getItem() instanceof ArmorItem armor) {

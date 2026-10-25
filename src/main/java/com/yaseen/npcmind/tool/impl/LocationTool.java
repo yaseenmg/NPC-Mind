@@ -41,6 +41,7 @@ public final class LocationTool implements AITool {
                     .append(" pos=").append(nearest.blockPosition().getX()).append(',').append(nearest.blockPosition().getY()).append(',').append(nearest.blockPosition().getZ())
                     .append(" distance=").append(String.format(java.util.Locale.ROOT, "%.1f", c.distanceTo(nearest))).append('\n');
         }
+        // Eight compass samples are a cheap real "look around" rather than a fabricated description.
         int[][] dirs={{0,-1},{1,-1},{1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1}};
         String[] names={"north","north_east","east","south_east","south","south_west","west","north_west"};
         for(int i=0;i<dirs.length;i++) {
